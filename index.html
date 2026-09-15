@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yard and Dock Doors Simulator</title>
+<style>
+  :root{
+    --bg:#0F1B2E; --panel:#16253D; --panel-2:#1C304D; --panel-3:#213A5C;
+    --line:rgba(233,237,242,0.10); --line-strong:rgba(233,237,242,0.18);
+    --text:#E9EDF2; --text-dim:#93A2B8; --text-faint:#5F7089;
+    --teal:#33ABA0; --teal-dim:#1F6E67;
+    --amber:#E3A038; --amber-dim:#8A6221;
+    --violet:#9A85D6; --violet-dim:#5A4C86;
+    --red:#E0574A; --red-dim:#7A2E27; --gold:#E8B94A;
+    --mono:'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans:-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;}
+  ::selection{background:var(--teal-dim); color:#fff;}
+  button, input, select{font-family:inherit;}
+  :focus-visible{outline:2px solid var(--amber); outline-offset:2px;}
+  .app{max-width:1220px; margin:0 auto; padding:28px 20px 60px;}
+
+  header.top{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:14px; padding-bottom:18px; margin-bottom:22px; border-bottom:1px solid var(--line-strong);}
+  header.top h1{font-size:22px; font-weight:700; letter-spacing:0.2px; margin:0 0 4px;}
+  header.top h1 span{color:var(--gold);}
+  header.top p{margin:0; color:var(--text-dim); font-size:13px; max-width:620px;}
+  .model-tag{font-family:var(--mono); font-size:12px; color:var(--teal); border:1px solid var(--teal-dim); border-radius:var(--radius); padding:5px 10px; white-space:nowrap;}
+
+  .config-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:14px;}
+  @media (max-width:1050px){ .config-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:600px){ .config-grid{grid-template-columns:1fr;} }
+  .cfg-card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:14px 16px;}
+  .cfg-card h4{margin:0 0 10px; font-size:11.5px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-faint); font-weight:600;}
+  .field{display:flex; flex-direction:column; gap:4px; margin-bottom:9px;}
+  .field label{font-size:11.5px; color:var(--text-dim);}
+  .field input, .field select{background:var(--bg); border:1px solid var(--line-strong); color:var(--text); border-radius:var(--radius); padding:6px 8px; font-family:var(--mono); font-size:13px; width:100%;}
+  .field input:hover, .field select:hover{border-color:var(--text-faint);}
+  .field-row{display:flex; gap:8px;}
+  .field-row .field{flex:1;}
+  .derived-line{font-size:11px; color:var(--amber); font-family:var(--mono); margin-top:2px;}
+
+  .hourly-card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:14px 16px; margin-bottom:14px;}
+  .hourly-card h4{margin:0 0 4px; font-size:11.5px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-faint); font-weight:600;}
+  .hourly-card p{margin:0 0 10px; font-size:12px; color:var(--text-dim);}
+  .hourly-grid{display:grid; grid-template-columns:repeat(12,1fr); gap:6px;}
+  @media (max-width:900px){ .hourly-grid{grid-template-columns:repeat(6,1fr);} }
+  @media (max-width:480px){ .hourly-grid{grid-template-columns:repeat(4,1fr);} }
+  .hr-field{display:flex; flex-direction:column; gap:2px; align-items:center;}
+  .hr-field label{font-size:9.5px; color:var(--text-faint); font-family:var(--mono);}
+  .hr-field input{width:100%; background:var(--bg); border:1px solid var(--line-strong); color:var(--text); border-radius:var(--radius); padding:4px 3px; font-family:var(--mono); font-size:11.5px; text-align:center;}
+
+  .config-actions{display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap;}
+  .btn{background:var(--panel-2); border:1px solid var(--line-strong); color:var(--text); padding:8px 14px; border-radius:var(--radius); font-size:13px; cursor:pointer; transition:background .15s, border-color .15s;}
+  .btn:hover{background:var(--panel-3); border-color:var(--text-faint);}
+  .btn.primary{background:var(--teal-dim); border-color:var(--teal); color:#fff;}
+  .btn.primary:hover{background:var(--teal);}
+  .btn:disabled{opacity:0.45; cursor:not-allowed;}
+
+  .reset-note{font-size:12px; color:var(--amber); margin:-6px 0 16px; padding:8px 12px; background:rgba(227,160,56,0.08); border:1px solid var(--amber-dim); border-radius:var(--radius); display:none;}
+  .reset-note.show{display:block;}
+
+  .tabs{display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid var(--line);}
+  .tab-btn{background:transparent; border:none; color:var(--text-dim); padding:10px 4px; margin-right:22px; font-size:14px; cursor:pointer; position:relative; top:1px; border-bottom:2px solid transparent;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--text); border-bottom-color:var(--amber); font-weight:600;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  p.blurb{color:var(--text-dim); font-size:13px; max-width:800px; margin:0 0 20px;}
+
+  .grid-2{display:grid; grid-template-columns:1.05fr 1.4fr; gap:20px;}
+  @media (max-width:880px){ .grid-2{grid-template-columns:1fr;} }
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px 20px;}
+  .panel h3{margin:0 0 12px; font-size:12.5px; text-transform:uppercase; letter-spacing:0.6px; color:var(--text-faint); font-weight:600;}
+  .note-box{font-size:12px; color:var(--text-dim); background:rgba(51,171,160,0.07); border:1px solid var(--teal-dim); border-radius:var(--radius); padding:10px 12px; margin-bottom:16px;}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:6px;}
+  @media (max-width:520px){ .stat-grid{grid-template-columns:repeat(2,1fr);} }
+  .stat-card{background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px;}
+  .stat-card .k{font-size:10.5px; color:var(--text-faint);}
+  .stat-card .v{font-family:var(--mono); font-size:16px; color:var(--text); margin-top:3px;}
+  .stat-card .u{font-size:10.5px; color:var(--text-faint); margin-left:3px;}
+  .stat-card.warn{border-color:var(--amber-dim);}
+  .stat-card.warn .v{color:var(--amber);}
+  .stat-card.fail{border-color:var(--red-dim);}
+  .stat-card.fail .v{color:var(--red);}
+  .stat-sub{font-size:11.5px; color:var(--teal); margin-top:2px;}
+
+  table.data-table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11.5px;}
+  table.data-table th{text-align:right; color:var(--text-faint); font-weight:500; padding:5px 7px; border-bottom:1px solid var(--line-strong); font-family:var(--sans); font-size:10.5px;}
+  table.data-table td{text-align:right; padding:4px 7px; border-bottom:1px solid var(--line); color:var(--text-dim);}
+  table.data-table td:first-child, table.data-table th:first-child{text-align:left; color:var(--text);}
+  table.data-table tr:last-child td{border-bottom:none;}
+  table.data-table tbody{display:block; max-height:360px; overflow-y:auto;}
+  table.data-table thead, table.data-table tbody tr{display:table; width:100%; table-layout:fixed;}
+  table.data-table tr.peak td{color:var(--amber);}
+
+  table.results-table{width:100%; border-collapse:collapse; font-size:12.5px; margin-top:6px;}
+  table.results-table th{text-align:right; padding:7px 9px; color:var(--text-faint); font-size:10.5px; font-weight:500; border-bottom:1px solid var(--line-strong);}
+  table.results-table th:first-child{text-align:left;}
+  table.results-table td{text-align:right; padding:7px 9px; font-family:var(--mono); border-bottom:1px solid var(--line); color:var(--text-dim);}
+  table.results-table td:first-child{text-align:left; font-family:var(--sans); color:var(--text);}
+  table.results-table td.hero{color:var(--text);}
+  table.results-table tr:last-child td{border-bottom:none;}
+
+  details.formulas{margin-top:16px; border-top:1px solid var(--line); padding-top:12px;}
+  details.formulas summary{cursor:pointer; color:var(--teal); font-size:12.5px; user-select:none;}
+  .formula-box{font-family:var(--mono); font-size:12.5px; color:var(--text-dim); line-height:1.9; margin-top:10px; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; overflow-x:auto; white-space:pre;}
+  .formula-box b{color:var(--text);}
+
+  /* yard visualization */
+  .viz-wrap-h{display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; padding:14px 4px 6px;}
+  .flow-col{display:flex; flex-direction:column; align-items:center; gap:6px; min-width:54px;}
+  .flow-col .arrow-lbl{font-size:11px; color:var(--text-faint); text-align:center; max-width:80px;}
+  .flow-arrow-h{width:30px; height:22px;}
+  .flow-arrow-h.pulse{animation:pulseArrowH .5s ease-out;}
+  @keyframes pulseArrowH{ 0%{transform:scale(1.5);} 100%{transform:scale(1);} }
+  .queue-row{display:flex; flex-direction:row-reverse; gap:6px; align-items:center; flex-wrap:wrap-reverse; justify-content:flex-start; max-width:300px;}
+  .q-slot{width:28px; height:24px; border-radius:4px; border:1.5px dashed var(--line-strong); display:flex; align-items:center; justify-content:center; transition:border-color .15s, background .15s; flex:0 0 auto;}
+  .q-slot.pop{animation:popIn .22s ease-out;}
+  @keyframes popIn{0%{transform:scale(0.4);}60%{transform:scale(1.12);}100%{transform:scale(1);}}
+  .q-more{font-family:var(--mono); font-size:11px; color:var(--text-faint); padding:0 4px;}
+  .servers-row{display:flex; gap:8px; flex-wrap:wrap; max-width:340px; justify-content:center;}
+  .server-node{width:56px; height:56px; border-radius:8px; border:2px solid var(--teal-dim); background:radial-gradient(circle at 35% 30%, var(--panel-3), var(--panel)); display:flex; align-items:center; justify-content:center; position:relative; transition:box-shadow .2s, border-color .2s; flex:0 0 auto;}
+  .server-node.busy{box-shadow:0 0 0 4px rgba(227,160,56,0.10);}
+  .server-node.flash-depart{box-shadow:0 0 0 7px rgba(51,171,160,0.25);}
+  .server-node .idx{position:absolute; bottom:-16px; font-size:9.5px; color:var(--text-faint); font-family:var(--mono);}
+  .truck-unit{width:24px; height:20px; border-radius:3px; opacity:0; transform:scale(0.5); transition:opacity .18s, transform .18s;}
+  .truck-unit.on{opacity:1; transform:scale(1);}
+  .truck-load{background:var(--amber);}
+  .truck-unload{background:var(--teal);}
+  .truck-both{background:var(--violet);}
+  .blocked-flash{font-family:var(--mono); font-size:11.5px; color:var(--red); text-align:center; min-height:16px; opacity:0; transition:opacity .2s; margin-top:6px;}
+  .blocked-flash.show{opacity:1;}
+  .vis-note{font-size:10.5px; color:var(--text-faint); text-align:center; margin-top:2px;}
+
+  .clock-band{display:flex; align-items:center; gap:10px; margin:14px 0 6px; flex-wrap:wrap;}
+  .day-hour-readout{font-family:var(--mono); font-size:13px; color:var(--text-dim);}
+  .day-hour-readout b{color:var(--text);}
+  .hour-spark{flex:1; min-width:220px;}
+
+  .sim-controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:12px 0 12px;}
+  .speed-wrap{display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-dim);}
+  .speed-wrap input[type=range]{width:120px; accent-color:var(--teal);}
+
+  .event-log{font-family:var(--mono); font-size:11px; color:var(--text-dim); background:var(--bg); border:1px solid var(--line); border-radius:var(--radius); height:150px; overflow-y:auto; padding:8px 10px;}
+  .event-log div{padding:2px 0; border-bottom:1px dotted rgba(255,255,255,0.04);}
+  .event-log div.ev-block{color:var(--red);}
+  .event-log div.ev-depart{color:var(--teal);}
+  .event-log div.ev-arrive{color:var(--text-dim);}
+
+  svg.chart text{font-family:var(--mono); fill:var(--text-faint); font-size:9.5px;}
+  svg.chart .axis-line{stroke:var(--line-strong); stroke-width:1;}
+  .legend{display:flex; gap:16px; font-size:11.5px; color:var(--text-dim); margin-top:8px; flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:10px; height:10px; border-radius:2px; display:inline-block;}
+
+  .run-config{display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px;}
+  .progress-wrap{height:6px; background:var(--panel-2); border-radius:3px; overflow:hidden; margin:14px 0; display:none;}
+  .progress-wrap.show{display:block;}
+  .progress-bar{height:100%; width:0%; background:var(--teal); transition:width .12s;}
+  .empty-state{text-align:center; padding:50px 20px; color:var(--text-faint); font-size:13px; border:1px dashed var(--line-strong); border-radius:6px;}
+
+  footer.credit{margin-top:36px; padding-top:14px; border-top:1px solid var(--line); color:var(--text-faint); font-size:11.5px;}
+
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:0.001s !important; transition-duration:0.001s !important;} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div>
+      <h1>Yard and Dock Doors <span>Simulator</span></h1>
+      <p>Trucks arrive and, if a dock door is free, go straight to it; otherwise they wait in a separate yard area with its own finite capacity. A truck is diverted — a service failure — only when every dock door is busy <i>and</i> the waiting yard is also full. Arrival intensity varies by hour of day.</p>
+    </div>
+    <div class="model-tag" id="modelTag">docks c=3 · yard(wait)=9 · site=12</div>
+  </header>
+
+  <div class="config-grid">
+    <div class="cfg-card">
+      <h4>Site capacity: docks &amp; yard</h4>
+      <div class="field"><label for="inYardCap">Yard capacity — waiting trucks (separate from docks)</label><input type="number" id="inYardCap" min="0" step="1" value="9"></div>
+      <div class="field"><label for="inDocks">Dock doors c</label><input type="number" id="inDocks" min="1" step="1" value="3"></div>
+      <div class="derived-line" id="derivedYard">docks + yard = site capacity of 12 trucks</div>
+    </div>
+
+    <div class="cfg-card">
+      <h4>Truck type mix</h4>
+      <div class="field"><label for="inPLoad">P(loading only)</label><input type="number" id="inPLoad" min="0" max="1" step="0.05" value="0.3"></div>
+      <div class="field"><label for="inPUnload">P(unloading only)</label><input type="number" id="inPUnload" min="0" max="1" step="0.05" value="0.3"></div>
+      <div class="field"><label for="inPBoth">P(unload then load)</label><input type="number" id="inPBoth" min="0" max="1" step="0.05" value="0.4"></div>
+      <div class="derived-line" id="derivedMix">normalized: 0.30 / 0.30 / 0.40</div>
+    </div>
+
+    <div class="cfg-card">
+      <h4>Loading time (min)</h4>
+      <div class="field"><label for="loadType">Distribution</label>
+        <select id="loadType"><option value="triangular">Triangular</option><option value="pert">PERT</option><option value="beta">Beta</option></select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="loadMin">min</label><input type="number" id="loadMin" step="1" value="20"></div>
+        <div class="field" id="loadModeWrap"><label for="loadMode">mode</label><input type="number" id="loadMode" step="1" value="35"></div>
+        <div class="field"><label for="loadMax">max</label><input type="number" id="loadMax" step="1" value="60"></div>
+      </div>
+      <div class="field-row" id="loadAlphaBetaWrap" style="display:none;">
+        <div class="field"><label for="loadAlpha">&alpha;</label><input type="number" id="loadAlpha" step="0.1" min="0.05" value="2"></div>
+        <div class="field"><label for="loadBeta">&beta;</label><input type="number" id="loadBeta" step="0.1" min="0.05" value="3"></div>
+      </div>
+      <div class="derived-line" id="derivedLoad">mean 38.3 min</div>
+    </div>
+
+    <div class="cfg-card">
+      <h4>Unloading time (min)</h4>
+      <div class="field"><label for="unloadType">Distribution</label>
+        <select id="unloadType"><option value="triangular">Triangular</option><option value="pert">PERT</option><option value="beta">Beta</option></select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label for="unloadMin">min</label><input type="number" id="unloadMin" step="1" value="15"></div>
+        <div class="field" id="unloadModeWrap"><label for="unloadMode">mode</label><input type="number" id="unloadMode" step="1" value="30"></div>
+        <div class="field"><label for="unloadMax">max</label><input type="number" id="unloadMax" step="1" value="50"></div>
+      </div>
+      <div class="field-row" id="unloadAlphaBetaWrap" style="display:none;">
+        <div class="field"><label for="unloadAlpha">&alpha;</label><input type="number" id="unloadAlpha" step="0.1" min="0.05" value="2"></div>
+        <div class="field"><label for="unloadBeta">&beta;</label><input type="number" id="unloadBeta" step="0.1" min="0.05" value="3"></div>
+      </div>
+      <div class="derived-line" id="derivedUnload">mean 31.7 min</div>
+    </div>
+  </div>
+
+  <div class="hourly-card">
+    <h4>Hourly truck arrival rate (trucks / hour, Poisson)</h4>
+    <p>One value per hour of day. Arrivals in each hour are drawn from a Poisson process at that hour's rate.</p>
+    <div class="hourly-grid" id="hourlyGrid"></div>
+  </div>
+
+  <div class="config-actions">
+    <button class="btn" id="btnExample">Use example scenario</button>
+    <span style="color:var(--text-faint); font-size:12px;" id="cfgSummary"></span>
+  </div>
+  <div class="reset-note" id="resetNote">Configuration changed — simulation and batch results below were reset to match.</div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="analytical">1. Analytical estimate</button>
+    <button class="tab-btn" data-tab="animated">2. Animated simulation</button>
+    <button class="tab-btn" data-tab="batch">3. Batch simulation</button>
+    <button class="tab-btn" data-tab="experiments">4. Design experiments</button>
+  </nav>
+
+  <!-- ============ TAB 1 ============ -->
+  <section class="tab-panel active" id="tab-analytical">
+    <p class="blurb">Because arrival intensity changes by hour and service times are triangular/beta/PERT rather than exponential, there is no exact closed-form solution across the full day. This tab treats each hour as its own short-run steady state — an M/M/c/K-equivalent approximation using that hour's arrival rate and the average combined service time — to give a quick analytical benchmark. The simulation tabs capture the real dynamics exactly.</p>
+
+    <div class="note-box" id="scvNote"></div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Hour-by-hour approximation</h3>
+        <table class="data-table" id="hourTable"></table>
+      </div>
+      <div class="panel">
+        <h3>Arrival rate profile</h3>
+        <div id="arrivalChart"></div>
+        <h3 style="margin-top:20px;">Utilization &amp; failure rate by hour (approx.)</h3>
+        <div id="utilBlockChart"></div>
+        <div class="legend"><span><i style="background:var(--teal)"></i>&rho; utilization</span><span><i style="background:var(--red)"></i>P(failure)</span></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h3>Daily summary (approximate)</h3>
+      <div class="stat-grid" id="dailyStats"></div>
+    </div>
+
+    <details class="formulas">
+      <summary>How this approximation is computed</summary>
+      <div class="formula-box" id="formulaBox"></div>
+    </details>
+  </section>
+
+  <!-- ============ TAB 2 ============ -->
+  <section class="tab-panel" id="tab-animated">
+    <p class="blurb">One simulated run, played out in real time with drawn arrival, loading and unloading times. Watch trucks arrive, wait, occupy a dock door, and — when the site is full — get diverted.</p>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Site</h3>
+        <div class="viz-wrap-h">
+          <div class="flow-col">
+            <svg class="flow-arrow-h" id="arrowIn" viewBox="0 0 30 22"><path d="M0 6 L17 6 L17 0 L30 11 L17 22 L17 16 L0 16 Z" fill="#E3A038"/></svg>
+            <div class="arrow-lbl">trucks arrive</div>
+          </div>
+          <div class="queue-row" id="queueCol"></div>
+          <div class="servers-row" id="serversRow"></div>
+          <div class="flow-col">
+            <svg class="flow-arrow-h" id="arrowOut" viewBox="0 0 30 22"><path d="M0 6 L17 6 L17 0 L30 11 L17 22 L17 16 L0 16 Z" fill="#33ABA0"/></svg>
+            <div class="arrow-lbl">departs</div>
+          </div>
+        </div>
+        <div class="blocked-flash" id="blockedFlash">truck diverted — docks busy &amp; yard full</div>
+        <div class="vis-note" id="visNote"></div>
+        <div class="legend" style="justify-content:center;">
+          <span><i class="truck-load" style="border-radius:2px;"></i>loading only</span>
+          <span><i class="truck-unload" style="border-radius:2px;"></i>unloading only</span>
+          <span><i class="truck-both" style="border-radius:2px;"></i>unload then load</span>
+        </div>
+
+        <div class="clock-band">
+          <div class="day-hour-readout">day <b id="simDay">1</b> &nbsp;hour <b id="simHour">0</b>:00</div>
+          <div class="hour-spark" id="hourSpark"></div>
+        </div>
+
+        <div class="sim-controls">
+          <div class="field" style="min-width:90px;"><label for="inDaysAnim">days to run</label><input type="number" id="inDaysAnim" min="1" max="10" step="1" value="1"></div>
+          <button class="btn primary" id="btnPlay">Play</button>
+          <button class="btn" id="btnPause" disabled>Pause</button>
+          <button class="btn" id="btnResetSim">Reset</button>
+          <div class="speed-wrap">
+            <label for="speedRange">speed</label>
+            <input type="range" id="speedRange" min="1" max="150" step="1" value="20">
+            <span id="speedVal" style="font-family:var(--mono);">20</span>
+          </div>
+        </div>
+        <div class="day-hour-readout">sim time <b id="simClockVal">0.0</b> min &nbsp;·&nbsp; n = <b id="simNVal">0</b>/<span id="simKVal">12</span> &nbsp;·&nbsp; served <b id="simServedVal">0</b> &nbsp;·&nbsp; diverted <b id="simBlockedVal">0</b></div>
+
+        <h3 style="margin-top:16px;">Event log</h3>
+        <div class="event-log" id="eventLog"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Throughput &amp; failures</h3>
+        <div class="stat-grid" id="simThroughputStats"></div>
+
+        <h3 style="margin-top:18px;">Utilization — docks, yard &amp; site</h3>
+        <div class="stat-grid" id="simUtilStats"></div>
+
+        <h3 style="margin-top:18px;">Time in system (overall &amp; by truck type)</h3>
+        <table class="data-table" id="simTypeTable"></table>
+
+        <h3 style="margin-top:18px;">Distribution of trucks on site, so far</h3>
+        <div id="simPnChart"></div>
+
+        <h3 style="margin-top:18px;">Average site occupancy by hour of day, so far</h3>
+        <div id="simHourChart"></div>
+        <div class="legend"><span><i style="background:var(--teal)"></i>analytical (approx.)</span><span><i style="background:var(--amber)"></i>simulated</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 3 ============ -->
+  <section class="tab-panel" id="tab-batch">
+    <p class="blurb">Run many independent multi-day replications with no animation, each starting with an empty site at hour 0. Averaging across replications shows expected performance and the range of variation day to day.</p>
+
+    <div class="panel">
+      <div class="run-config">
+        <div class="field" style="min-width:110px;"><label for="inReplications">Replications</label><input type="number" id="inReplications" min="1" max="500" step="5" value="60"></div>
+        <div class="field" style="min-width:110px;"><label for="inDaysBatch">Days per replication</label><input type="number" id="inDaysBatch" min="1" max="60" step="1" value="7"></div>
+        <button class="btn primary" id="btnRunBatch">Run batch</button>
+        <span id="batchRunInfo" style="color:var(--text-faint); font-size:12px;"></span>
+      </div>
+      <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+
+      <div id="batchEmpty" class="empty-state">No batch run yet. Set replications and days, then run the batch.</div>
+      <div id="batchResults" style="display:none;">
+        <table class="results-table" id="batchTable"></table>
+
+        <div class="grid-2" style="margin-top:22px;">
+          <div>
+            <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">Convergence of avg. site occupancy (L)</h3>
+            <div id="convChart"></div>
+          </div>
+          <div>
+            <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">Distribution of trucks on site</h3>
+            <div id="batchPnChart"></div>
+            <div class="legend"><span><i style="background:var(--teal)"></i>analytical (approx.)</span><span><i style="background:var(--amber)"></i>simulated average</span></div>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;">
+          <div class="grid-2">
+            <div>
+              <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">Average site occupancy by hour of day</h3>
+              <div id="batchHourOccChart"></div><div class="legend"><span><i style="background:var(--teal)"></i>analytical (approx.)</span><span><i style="background:var(--amber)"></i>simulated</span></div>
+            </div>
+            <div>
+              <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">Failure (diversion) rate by hour of day</h3>
+              <div id="batchHourFailChart"></div><div class="legend"><span><i style="background:var(--teal)"></i>analytical (approx.)</span><span><i style="background:var(--red)"></i>simulated</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:22px;">
+          <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">By truck type (simulated)</h3>
+          <table class="data-table" id="batchTypeTable"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB 4 ============ -->
+  <section class="tab-panel" id="tab-experiments">
+    <p class="blurb">Sweep yard capacity and dock door count over a grid, running a batch of replications at every combination (truck mix, service-time distributions, and the hourly arrival profile stay fixed at the configuration above). Compare how the failure rate, truck waiting time, and dock utilization distributions shift across the design space.</p>
+
+    <div class="panel">
+      <div class="run-config">
+        <div class="field" style="min-width:90px;"><label for="inExpYardMin">yard min</label><input type="number" id="inExpYardMin" min="0" step="1" value="3"></div>
+        <div class="field" style="min-width:90px;"><label for="inExpYardMax">yard max</label><input type="number" id="inExpYardMax" min="0" step="1" value="15"></div>
+        <div class="field" style="min-width:90px;"><label for="inExpYardStep">yard step</label><input type="number" id="inExpYardStep" min="1" step="1" value="3"></div>
+        <div class="field" style="min-width:90px;"><label for="inExpDocksMin">docks min</label><input type="number" id="inExpDocksMin" min="1" step="1" value="1"></div>
+        <div class="field" style="min-width:90px;"><label for="inExpDocksMax">docks max</label><input type="number" id="inExpDocksMax" min="1" step="1" value="5"></div>
+        <div class="field" style="min-width:90px;"><label for="inExpDocksStep">docks step</label><input type="number" id="inExpDocksStep" min="1" step="1" value="1"></div>
+        <div class="field" style="min-width:100px;"><label for="inExpReps">replications</label><input type="number" id="inExpReps" min="1" max="200" step="1" value="15"></div>
+        <div class="field" style="min-width:100px;"><label for="inExpDays">days / run</label><input type="number" id="inExpDays" min="1" max="30" step="1" value="4"></div>
+        <button class="btn primary" id="btnRunExperiment">Run experiment</button>
+      </div>
+      <div style="color:var(--text-faint); font-size:12px; margin-bottom:6px;" id="expDesignInfo"></div>
+      <div class="progress-wrap" id="expProgressWrap"><div class="progress-bar" id="expProgressBar"></div></div>
+
+      <div id="expEmpty" class="empty-state">No experiment run yet. Set the yard and dock ranges, then run the experiment.</div>
+      <div id="expResults" style="display:none;">
+
+        <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint); margin-top:6px;">Mean failure (diversion) rate — yard size &times; dock count</h3>
+        <div id="expHeatFail"></div>
+
+        <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint); margin-top:22px;">Mean truck waiting time (Wq, min) — yard size &times; dock count</h3>
+        <div id="expHeatWq"></div>
+
+        <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint); margin-top:22px;">Mean dock door set utilization (&rho;) — yard size &times; dock count</h3>
+        <div id="expHeatUtil"></div>
+
+        <div class="grid-2" style="margin-top:26px;">
+          <div>
+            <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">Failure rate vs. yard size, by dock count</h3>
+            <div id="expLineFail"></div>
+          </div>
+          <div>
+            <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">Truck waiting time (Wq) vs. yard size, by dock count</h3>
+            <div id="expLineWq"></div>
+          </div>
+        </div>
+        <div style="margin-top:20px;">
+          <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint);">Dock utilization (&rho;) vs. yard size, by dock count</h3>
+          <div id="expLineUtil"></div>
+        </div>
+        <div class="legend" id="expLegend" style="margin-top:6px;"></div>
+
+        <h3 style="text-transform:uppercase; letter-spacing:0.6px; font-size:12.5px; color:var(--text-faint); margin-top:26px;">Combination-by-combination results</h3>
+        <table class="data-table" id="expTable"></table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="credit">Yard and Dock Doors for Truck Loading and Unloading Simulator &middot; Georgia Tech ISyE 6202 &amp; 6335 Supply Chain Facilities &middot;&nbsp;&nbsp; Developed by Claude AI as required by Prof. Benoit Montreuil &middot; Version 1.0, 2026-09-14</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const VIS_MAX_SERVERS = 8;
+const VIS_MAX_QUEUE = 12;
+const HOURS = 24;
+
+/* ================= utilities ================= */
+function fmt(x, d){ if(!isFinite(x)) return '—'; return x.toFixed(d===undefined?4:d); }
+function clamp(x,lo,hi){ return Math.max(lo,Math.min(hi,x)); }
+function pct(x){ return isFinite(x) ? (x*100).toFixed(1)+'%' : '—'; }
+
+function mulberry32(seed){
+  let a = seed>>>0;
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function expRand(rng, rate){ let u=rng(); while(u<=0) u=rng(); return -Math.log(u)/rate; }
+function randNormal(rng){ let u1=rng(),u2=rng(); while(u1<=1e-12) u1=rng(); return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2); }
+function randGamma(rng, shape){
+  if(shape<1){ const u=rng(); return randGamma(rng, shape+1) * Math.pow(Math.max(u,1e-12), 1/shape); }
+  const d = shape-1/3, c = 1/Math.sqrt(9*d);
+  while(true){
+    let x,v;
+    do{ x=randNormal(rng); v=1+c*x; } while(v<=0);
+    v=v*v*v;
+    const u=rng();
+    if(u < 1-0.0331*x*x*x*x) return d*v;
+    if(Math.log(u) < 0.5*x*x + d*(1-v+Math.log(v))) return d*v;
+  }
+}
+function randBeta(rng,alpha,beta){ const x=randGamma(rng,alpha), y=randGamma(rng,beta); return x/(x+y); }
+function triangularRand(rng,min,mode,max){
+  if(max<=min) return min;
+  const u=rng(); const c=(mode-min)/(max-min);
+  if(u<c) return min+Math.sqrt(u*(max-min)*(mode-min));
+  return max-Math.sqrt((1-u)*(max-min)*(max-mode));
+}
+function pertAlphaBeta(min,mode,max,gamma){
+  gamma = gamma||4;
+  if(max<=min) return {alpha:2,beta:2,mean:min};
+  const mean = (min+gamma*mode+max)/(gamma+2);
+  let alpha = 1+gamma*(mode-min)/(max-min);
+  let beta = 1+gamma*(max-mode)/(max-min);
+  if(!isFinite(alpha)||alpha<=0) alpha=2;
+  if(!isFinite(beta)||beta<=0) beta=2;
+  return {alpha,beta,mean};
+}
+function sampleDuration(rng, cfg){
+  if(cfg.type==='triangular') return Math.max(0.01, triangularRand(rng,cfg.min,cfg.mode,cfg.max));
+  if(cfg.type==='pert'){ const ab=pertAlphaBeta(cfg.min,cfg.mode,cfg.max,4); return Math.max(0.01, cfg.min + randBeta(rng,ab.alpha,ab.beta)*(cfg.max-cfg.min)); }
+  if(cfg.type==='beta') return Math.max(0.01, cfg.min + randBeta(rng,cfg.alpha,cfg.beta)*(cfg.max-cfg.min));
+  return 1;
+}
+function meanVarOfDist(cfg){
+  if(cfg.type==='triangular'){
+    const {min,mode,max}=cfg;
+    const mean=(min+mode+max)/3;
+    const v=(min*min+mode*mode+max*max-min*mode-min*max-mode*max)/18;
+    return {mean, variance:Math.max(v,1e-9)};
+  }
+  if(cfg.type==='pert'){
+    const ab=pertAlphaBeta(cfg.min,cfg.mode,cfg.max,4);
+    const span=cfg.max-cfg.min;
+    const bv=(ab.alpha*ab.beta)/((ab.alpha+ab.beta)*(ab.alpha+ab.beta)*(ab.alpha+ab.beta+1));
+    return {mean:ab.mean, variance:Math.max(bv*span*span,1e-9)};
+  }
+  if(cfg.type==='beta'){
+    const span=cfg.max-cfg.min;
+    const mean=cfg.min+(cfg.alpha/(cfg.alpha+cfg.beta))*span;
+    const bv=(cfg.alpha*cfg.beta)/((cfg.alpha+cfg.beta)*(cfg.alpha+cfg.beta)*(cfg.alpha+cfg.beta+1));
+    return {mean, variance:Math.max(bv*span*span,1e-9)};
+  }
+  return {mean:1, variance:1};
+}
+
+/* ================= analytical M/M/c/K (reused as per-hour approximation) ================= */
+function analytical(lambda, mu, c, Cq){
+  const K = c + Cq;
+  const a = lambda/mu, rho = a/c;
+  const term = new Array(K+1); term[0]=1;
+  for(let n=1;n<=K;n++){ term[n] = n<=c ? term[n-1]*a/n : term[n-1]*a/c; }
+  const sum = term.reduce((s,v)=>s+v,0);
+  const P = term.map(v=>v/sum);
+  let L=0, Lq=0, PallBusy=0;
+  for(let n=0;n<=K;n++){ L+=n*P[n]; if(n>c) Lq+=(n-c)*P[n]; if(n>=c) PallBusy+=P[n]; }
+  const Pblock=P[K];
+  const lambdaEff=lambda*(1-Pblock);
+  const W=L/lambdaEff, Wq=Lq/lambdaEff;
+  const busyServers=lambdaEff/mu, util=busyServers/c;
+  return {K,c,a,rho,P,L,Lq,W,Wq,lambdaEff,Pblock,busyServers,util,PallBusy};
+}
+
+/* ================= Yard simulation engine ================= */
+function YardSim(cfg, seed){
+  this.K=cfg.K; this.c=cfg.c; this.Cq=cfg.Cq;
+  this.pLoad=cfg.pLoad; this.pUnload=cfg.pUnload; this.pBoth=cfg.pBoth;
+  this.loadDist=cfg.loadDist; this.unloadDist=cfg.unloadDist;
+  this.hourlyRates=cfg.hourlyRates;
+  this.rng=mulberry32(seed>>>0);
+  this.clock=0; this.n=0; this.busyCount=0;
+  this.serverBusyUntil=new Array(this.c).fill(Infinity);
+  this.serverCustomer=new Array(this.c).fill(null);
+  this.queue=[];
+  this.lastEventTime=0;
+  this.areaN=0; this.areaNq=0;
+  this.maxN=0; this.maxBusy=0; this.maxQueueLen=0;
+  this.timeInState=new Array(this.K+1).fill(0);
+  this.hourAreaN=new Array(HOURS).fill(0); this.hourTime=new Array(HOURS).fill(0);
+  this.hourArrivals=new Array(HOURS).fill(0); this.hourBlocked=new Array(HOURS).fill(0);
+  this.totalArrivals=0; this.blocked=0; this.served=0;
+  this.sumW=0; this.sumWq=0;
+  this.byType=[{served:0,sumW:0,sumWq:0,sumService:0},{served:0,sumW:0,sumWq:0,sumService:0},{served:0,sumW:0,sumWq:0,sumService:0}];
+  this.sumLoad=0; this.countLoad=0; this.sumUnload=0; this.countUnload=0;
+  this._scheduleNextArrivalFrom(0, 0);
+}
+YardSim.prototype._scheduleNextArrivalFrom = function(t, guard){
+  guard = guard||0;
+  if(guard>2000){ this.nextArrival=Infinity; return; }
+  const hourIdx = Math.floor(t/60)%HOURS;
+  const ratePerMin = this.hourlyRates[hourIdx]/60;
+  const hourEnd = (Math.floor(t/60)+1)*60;
+  if(ratePerMin<=0){ this._scheduleNextArrivalFrom(hourEnd, guard+1); return; }
+  const cand = t + expRand(this.rng, ratePerMin);
+  if(cand>=hourEnd){ this._scheduleNextArrivalFrom(hourEnd, guard+1); return; }
+  this.nextArrival = cand;
+};
+YardSim.prototype._minServerTime = function(){ let m=Infinity; for(let i=0;i<this.c;i++) if(this.serverBusyUntil[i]<m) m=this.serverBusyUntil[i]; return m; };
+YardSim.prototype.peekNextEventTime = function(){ return Math.min(this.nextArrival, this._minServerTime()); };
+YardSim.prototype._advanceAreas = function(t){
+  let cursor=this.lastEventTime;
+  while(cursor<t){
+    const hourIdx=Math.floor(cursor/60)%HOURS;
+    const nextBoundary=(Math.floor(cursor/60)+1)*60;
+    const segEnd=Math.min(t,nextBoundary);
+    const dt=segEnd-cursor;
+    if(dt>0){
+      this.areaN += this.n*dt;
+      this.areaNq += Math.max(this.n-this.c,0)*dt;
+      this.timeInState[this.n]+=dt;
+      this.hourAreaN[hourIdx]+=this.n*dt;
+      this.hourTime[hourIdx]+=dt;
+    }
+    cursor=segEnd;
+  }
+  this.lastEventTime=t;
+};
+YardSim.prototype._drawType = function(){
+  const u=this.rng();
+  if(u<this.pLoad) return 0;
+  if(u<this.pLoad+this.pUnload) return 1;
+  return 2;
+};
+YardSim.prototype.step = function(){
+  const minServer=this._minServerTime();
+  const t=Math.min(this.nextArrival, minServer);
+  if(!isFinite(t)) return null;
+  this._advanceAreas(t);
+  this.clock=t;
+  let evt;
+  const hourIdx=Math.floor(t/60)%HOURS;
+  if(this.nextArrival<=minServer){
+    this.totalArrivals++;
+    this.hourArrivals[hourIdx]++;
+    if(this.n<this.K){
+      this.n++;
+      if(this.n>this.maxN) this.maxN=this.n;
+      const type=this._drawType();
+      let loadT=0, unloadT=0, service=0;
+      if(type===0){ loadT=sampleDuration(this.rng,this.loadDist); service=loadT; }
+      else if(type===1){ unloadT=sampleDuration(this.rng,this.unloadDist); service=unloadT; }
+      else { unloadT=sampleDuration(this.rng,this.unloadDist); loadT=sampleDuration(this.rng,this.loadDist); service=unloadT+loadT; }
+      const cust={arrivalTime:t, type, loadT, unloadT, service};
+      if(this.busyCount<this.c){
+        let idx=-1;
+        for(let i=0;i<this.c;i++) if(this.serverBusyUntil[i]===Infinity){ idx=i; break; }
+        cust.serviceStart=t;
+        this.serverBusyUntil[idx]=t+cust.service;
+        this.serverCustomer[idx]=cust;
+        this.busyCount++;
+        if(this.busyCount>this.maxBusy) this.maxBusy=this.busyCount;
+        evt={type:'admit-serve', time:t, n:this.n, serverIndex:idx, truckType:type};
+      } else {
+        this.queue.push(cust);
+        if(this.queue.length>this.maxQueueLen) this.maxQueueLen=this.queue.length;
+        evt={type:'admit-queue', time:t, n:this.n, qlen:this.queue.length, truckType:type};
+      }
+    } else {
+      this.blocked++;
+      this.hourBlocked[hourIdx]++;
+      evt={type:'blocked', time:t, n:this.n};
+    }
+    this._scheduleNextArrivalFrom(t, 0);
+  } else {
+    let idx=-1;
+    for(let i=0;i<this.c;i++) if(this.serverBusyUntil[i]===t){ idx=i; break; }
+    const cust=this.serverCustomer[idx];
+    const W=t-cust.arrivalTime, Wq=cust.serviceStart-cust.arrivalTime;
+    this.sumW+=W; this.sumWq+=Wq; this.served++;
+    const bt=this.byType[cust.type]; bt.served++; bt.sumW+=W; bt.sumWq+=Wq; bt.sumService+=cust.service;
+    if(cust.loadT>0){ this.sumLoad+=cust.loadT; this.countLoad++; }
+    if(cust.unloadT>0){ this.sumUnload+=cust.unloadT; this.countUnload++; }
+    this.n--; this.busyCount--;
+    this.serverBusyUntil[idx]=Infinity; this.serverCustomer[idx]=null;
+    evt={type:'depart', time:t, n:this.n, W, Wq, serverIndex:idx, truckType:cust.type, startNext:false};
+    if(this.queue.length>0){
+      const nxt=this.queue.shift();
+      nxt.serviceStart=t;
+      this.serverCustomer[idx]=nxt;
+      this.serverBusyUntil[idx]=t+nxt.service;
+      this.busyCount++;
+      if(this.busyCount>this.maxBusy) this.maxBusy=this.busyCount;
+      evt.startNext=true;
+    }
+  }
+  return evt;
+};
+YardSim.prototype.runUntil = function(T){
+  while(this.peekNextEventTime()<=T){ this.step(); }
+  this._advanceAreas(T); this.clock=T;
+};
+YardSim.prototype.getStats = function(){
+  const total=this.lastEventTime>0?this.lastEventTime:1e-9;
+  const L=this.areaN/total, Lq=this.areaNq/total;
+  const busyServers=L-Lq, util=busyServers/this.c;
+  const Pn=this.timeInState.map(x=>x/total);
+  let PallBusy=0; for(let n=this.c;n<Pn.length;n++) PallBusy+=Pn[n];
+  const hourAvgN=this.hourAreaN.map((v,i)=> this.hourTime[i]>0 ? v/this.hourTime[i] : 0);
+  const hourPblock=this.hourArrivals.map((v,i)=> v>0 ? this.hourBlocked[i]/v : 0);
+  const byType=this.byType.map(bt=>({served:bt.served, avgW: bt.served?bt.sumW/bt.served:0, avgWq: bt.served?bt.sumWq/bt.served:0, avgService: bt.served?bt.sumService/bt.served:0}));
+  return {
+    L, Lq, busyServers, util, PallBusy, Pn,
+    maxN:this.maxN, maxSystemUtil:this.maxN/this.K,
+    maxBusy:this.maxBusy, maxDockUtil:this.maxBusy/this.c,
+    maxQueueLen:this.maxQueueLen, maxYardWaitUtil: this.Cq>0 ? this.maxQueueLen/this.Cq : (this.maxQueueLen>0?1:0),
+    W: this.served? this.sumW/this.served:0,
+    Wq: this.served? this.sumWq/this.served:0,
+    Pblock: this.totalArrivals? this.blocked/this.totalArrivals:0,
+    served:this.served, blocked:this.blocked, totalArrivals:this.totalArrivals, totalTime:total,
+    hourAvgN, hourPblock, byType,
+    avgLoadObs: this.countLoad? this.sumLoad/this.countLoad:0,
+    avgUnloadObs: this.countUnload? this.sumUnload/this.countUnload:0,
+  };
+};
+
+/* ================= SVG chart helpers ================= */
+function groupedBarChart(container, labels, seriesArr, colors, opts){
+  opts=opts||{};
+  const W=opts.width||460, H=opts.height||190;
+  const ML=32, MR=10, MT=10, MB=24;
+  const plotW=W-ML-MR, plotH=H-MT-MB;
+  let yMax = opts.yMax;
+  if(yMax===undefined){ yMax=0; seriesArr.forEach(s=>s.forEach(v=>{ if(v>yMax) yMax=v; })); yMax=yMax<=0?1:yMax*1.15; }
+  const n=labels.length, groupW=plotW/n, nSeries=seriesArr.length;
+  const barW=Math.min(14,(groupW*0.7)/nSeries);
+  let bars='';
+  for(let i=0;i<n;i++){
+    const gx=ML+i*groupW+groupW/2;
+    for(let s=0;s<nSeries;s++){
+      const v=seriesArr[s][i]||0;
+      const h=(v/yMax)*plotH;
+      const x=gx-(nSeries*barW)/2+s*barW;
+      const y=MT+plotH-h;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW-1.5).toFixed(1)}" height="${Math.max(0,h).toFixed(1)}" fill="${colors[s]}" rx="1.5"/>`;
+    }
+    if(n<=24) bars += `<text x="${gx.toFixed(1)}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
+  }
+  let gridlines='';
+  for(let g=0; g<=4; g++){
+    const yv=yMax*g/4, y=MT+plotH-(yv/yMax)*plotH;
+    gridlines += `<line class="axis-line" x1="${ML}" y1="${y.toFixed(1)}" x2="${W-MR}" y2="${y.toFixed(1)}"/><text x="${ML-6}" y="${(y+3).toFixed(1)}" text-anchor="end">${yv.toFixed(2)}</text>`;
+  }
+  container.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" style="width:100%; height:auto;">${gridlines}${bars}</svg>`;
+}
+function lineChart(container, series, refLine, opts){
+  opts=opts||{};
+  const W=opts.width||460, H=opts.height||190;
+  const ML=36, MR=10, MT=10, MB=22;
+  const plotW=W-ML-MR, plotH=H-MT-MB;
+  const n=series.length;
+  if(n<2){ container.innerHTML=''; return; }
+  let yMin=Infinity, yMax=-Infinity;
+  series.forEach(v=>{ if(v<yMin)yMin=v; if(v>yMax)yMax=v; });
+  if(refLine!=null){ if(refLine<yMin)yMin=refLine; if(refLine>yMax)yMax=refLine; }
+  const pad=(yMax-yMin)*0.15||0.5; yMin-=pad; yMax+=pad;
+  function xAt(i){ return ML+(i/(n-1))*plotW; }
+  function yAt(v){ return MT+plotH-((v-yMin)/(yMax-yMin))*plotH; }
+  let path=''; for(let i=0;i<n;i++){ path += (i===0?'M':'L')+xAt(i).toFixed(1)+' '+yAt(series[i]).toFixed(1)+' '; }
+  let ref='';
+  if(refLine!=null){ const y=yAt(refLine); ref=`<line x1="${ML}" y1="${y.toFixed(1)}" x2="${W-MR}" y2="${y.toFixed(1)}" stroke="#33ABA0" stroke-width="1.3" stroke-dasharray="4 3"/>`; }
+  let gridlines='';
+  for(let g=0; g<=4; g++){ const yv=yMin+(yMax-yMin)*g/4, y=yAt(yv); gridlines += `<line class="axis-line" x1="${ML}" y1="${y.toFixed(1)}" x2="${W-MR}" y2="${y.toFixed(1)}"/><text x="${ML-6}" y="${(y+3).toFixed(1)}" text-anchor="end">${yv.toFixed(2)}</text>`; }
+  container.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" style="width:100%; height:auto;">${gridlines}${ref}<path d="${path}" fill="none" stroke="#E3A038" stroke-width="1.8"/></svg>`;
+}
+function sparkline(container, values, highlightIdx, opts){
+  opts=opts||{};
+  const W=opts.width||400, H=opts.height||36;
+  const n=values.length;
+  const maxV=Math.max(1e-6, ...values);
+  const bw=W/n;
+  let bars='';
+  for(let i=0;i<n;i++){
+    const h=(values[i]/maxV)*(H-4);
+    const x=i*bw, y=H-h;
+    const col = i===highlightIdx ? '#E3A038' : 'rgba(233,237,242,0.22)';
+    bars += `<rect x="${(x+0.5).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw-1).toFixed(1)}" height="${h.toFixed(1)}" fill="${col}"/>`;
+  }
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:${H}px; display:block;">${bars}</svg>`;
+}
+
+function heatColor(t){
+  t=clamp(t,0,1);
+  const c0=[51,171,160], c1=[227,160,56], c2=[224,87,74];
+  let a,b,f;
+  if(t<0.5){ a=c0; b=c1; f=t/0.5; } else { a=c1; b=c2; f=(t-0.5)/0.5; }
+  const r=Math.round(a[0]+(b[0]-a[0])*f), g=Math.round(a[1]+(b[1]-a[1])*f), bch=Math.round(a[2]+(b[2]-a[2])*f);
+  return `rgb(${r},${g},${bch})`;
+}
+function heatmapChart(container, xLabels, yLabels, matrix, opts){
+  opts=opts||{};
+  const nx=xLabels.length, ny=yLabels.length;
+  const W=opts.width||640, H=opts.height||(50+ny*30);
+  const ML=64, MR=14, MT=10, MB=26;
+  const plotW=W-ML-MR, plotH=H-MT-MB;
+  const cellW=plotW/nx, cellH=plotH/ny;
+  let vMin=Infinity, vMax=-Infinity;
+  matrix.forEach(row=>row.forEach(v=>{ if(v<vMin)vMin=v; if(v>vMax)vMax=v; }));
+  if(!isFinite(vMin)){ vMin=0; vMax=1; }
+  if(vMax-vMin<1e-9){ vMin-=0.5; vMax+=0.5; }
+  const fmtFn = opts.fmt || (v=>v.toFixed(2));
+  let cells='';
+  for(let yi=0; yi<ny; yi++){
+    for(let xi=0; xi<nx; xi++){
+      const v = matrix[yi][xi];
+      const t = (v-vMin)/(vMax-vMin);
+      const col = heatColor(t);
+      const x = ML+xi*cellW, y = MT+yi*cellH;
+      cells += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(cellW-2).toFixed(1)}" height="${(cellH-2).toFixed(1)}" fill="${col}" rx="2"/>`;
+      const textColor = t>0.55 ? '#0F1B2E' : '#F5F7FA';
+      cells += `<text x="${(x+cellW/2).toFixed(1)}" y="${(y+cellH/2+3).toFixed(1)}" text-anchor="middle" fill="${textColor}" font-size="10.5">${fmtFn(v)}</text>`;
+    }
+  }
+  let xax=''; for(let xi=0;xi<nx;xi++){ xax += `<text x="${(ML+xi*cellW+cellW/2).toFixed(1)}" y="${H-8}" text-anchor="middle">${xLabels[xi]}</text>`; }
+  let yax=''; for(let yi=0;yi<ny;yi++){ yax += `<text x="${ML-8}" y="${(MT+yi*cellH+cellH/2+3).toFixed(1)}" text-anchor="end">${yLabels[yi]}</text>`; }
+  const xTitle = `<text x="${(ML+plotW/2).toFixed(1)}" y="${H-1}" text-anchor="middle" style="display:none;"></text>`;
+  container.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" style="width:100%; height:auto;">${cells}${xax}${yax}</svg>
+    <div style="display:flex; justify-content:space-between; font-size:10.5px; color:var(--text-faint); margin-top:2px;"><span>yard size &rarr;</span><span>docks &uarr; (rows)</span></div>`;
+}
+
+const EXP_PALETTE = ['#33ABA0','#E3A038','#9A85D6','#E0574A','#E8B94A','#6FA8DC','#C97F1E','#7FBF7F','#D68FB0','#8FA8D6'];
+
+function multiLineChart(container, xLabels, series, opts){
+  opts=opts||{};
+  const W=opts.width||460, H=opts.height||220;
+  const ML=42, MR=12, MT=10, MB=26;
+  const plotW=W-ML-MR, plotH=H-MT-MB;
+  const n=xLabels.length;
+  let yMin=0, yMax=-Infinity;
+  series.forEach(s=>s.values.forEach(v=>{ if(isFinite(v)&&v>yMax) yMax=v; }));
+  if(!isFinite(yMax)||yMax<=0) yMax=1;
+  yMax*=1.18;
+  function xAt(i){ return n<=1 ? ML+plotW/2 : ML+(i/(n-1))*plotW; }
+  function yAt(v){ return MT+plotH-((v-yMin)/(yMax-yMin))*plotH; }
+  let paths='';
+  series.forEach(s=>{
+    let d=''; s.values.forEach((v,i)=>{ d += (i===0?'M':'L')+xAt(i).toFixed(1)+' '+yAt(v).toFixed(1)+' '; });
+    paths += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
+    s.values.forEach((v,i)=>{ paths += `<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(v).toFixed(1)}" r="2.8" fill="${s.color}"/>`; });
+  });
+  let gridlines='';
+  for(let g=0; g<=4; g++){ const yv=yMax*g/4, y=yAt(yv); gridlines += `<line class="axis-line" x1="${ML}" y1="${y.toFixed(1)}" x2="${W-MR}" y2="${y.toFixed(1)}"/><text x="${ML-6}" y="${(y+3).toFixed(1)}" text-anchor="end">${yv.toFixed(2)}</text>`; }
+  let xax=''; xLabels.forEach((lb,i)=>{ xax += `<text x="${xAt(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${lb}</text>`; });
+  container.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" style="width:100%; height:auto;">${gridlines}${paths}${xax}</svg>`;
+}
+
+/* ================= config state ================= */
+const HOUR_LABELS = Array.from({length:24}, (_,i)=>i);
+const DEFAULT_HOURLY = [1,0.5,0.5,0.5,1,2,4,6,8,9,8,7,6,7,8,8,7,6,4,3,2,2,1.5,1];
+
+let CFG = null;
+let AN_HOURLY = [];  // analytical() per hour
+let ANMU = 1;
+
+const hourlyGrid = document.getElementById('hourlyGrid');
+HOUR_LABELS.forEach(h=>{
+  const wrap=document.createElement('div'); wrap.className='hr-field';
+  const lbl=document.createElement('label'); lbl.textContent=h+'–'+(h+1); lbl.setAttribute('for','hr'+h);
+  const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.5'; inp.id='hr'+h; inp.value=DEFAULT_HOURLY[h];
+  wrap.appendChild(lbl); wrap.appendChild(inp);
+  hourlyGrid.appendChild(wrap);
+});
+
+const els = {
+  inYardCap: document.getElementById('inYardCap'),
+  inDocks: document.getElementById('inDocks'),
+  inPLoad: document.getElementById('inPLoad'),
+  inPUnload: document.getElementById('inPUnload'),
+  inPBoth: document.getElementById('inPBoth'),
+  loadType: document.getElementById('loadType'),
+  loadMin: document.getElementById('loadMin'), loadMode: document.getElementById('loadMode'), loadMax: document.getElementById('loadMax'),
+  loadAlpha: document.getElementById('loadAlpha'), loadBeta: document.getElementById('loadBeta'),
+  unloadType: document.getElementById('unloadType'),
+  unloadMin: document.getElementById('unloadMin'), unloadMode: document.getElementById('unloadMode'), unloadMax: document.getElementById('unloadMax'),
+  unloadAlpha: document.getElementById('unloadAlpha'), unloadBeta: document.getElementById('unloadBeta'),
+  resetNote: document.getElementById('resetNote'),
+  modelTag: document.getElementById('modelTag'),
+};
+
+function toggleDistFields(prefix){
+  const type = document.getElementById(prefix+'Type').value;
+  document.getElementById(prefix+'ModeWrap').style.display = (type==='beta') ? 'none' : 'flex';
+  document.getElementById(prefix+'AlphaBetaWrap').style.display = (type==='beta') ? 'flex' : 'none';
+}
+els.loadType.addEventListener('change', ()=>{ toggleDistFields('load'); applyConfig(true); });
+els.unloadType.addEventListener('change', ()=>{ toggleDistFields('unload'); applyConfig(true); });
+
+function readDistCfg(prefix){
+  const type = document.getElementById(prefix+'Type').value;
+  const min = parseFloat(document.getElementById(prefix+'Min').value)||0;
+  let max = parseFloat(document.getElementById(prefix+'Max').value)||(min+1);
+  if(max<=min) max=min+0.5;
+  if(type==='beta'){
+    const alpha = Math.max(0.05, parseFloat(document.getElementById(prefix+'Alpha').value)||2);
+    const beta = Math.max(0.05, parseFloat(document.getElementById(prefix+'Beta').value)||2);
+    return {type, min, max, alpha, beta};
+  }
+  let mode = parseFloat(document.getElementById(prefix+'Mode').value)||((min+max)/2);
+  mode = clamp(mode, min, max);
+  return {type, min, mode, max};
+}
+
+function readConfig(){
+  const Cq = Math.max(0, Math.round(parseFloat(els.inYardCap.value)||0));
+  const c = Math.max(1, Math.round(parseFloat(els.inDocks.value)||1));
+  const K = c + Cq;
+  const pLoadRaw = Math.max(0, parseFloat(els.inPLoad.value)||0);
+  const pUnloadRaw = Math.max(0, parseFloat(els.inPUnload.value)||0);
+  const pBothRaw = Math.max(0, parseFloat(els.inPBoth.value)||0);
+  let sumP = pLoadRaw+pUnloadRaw+pBothRaw; if(sumP<=0) sumP=1;
+  const pLoad=pLoadRaw/sumP, pUnload=pUnloadRaw/sumP, pBoth=pBothRaw/sumP;
+  const loadDist = readDistCfg('load');
+  const unloadDist = readDistCfg('unload');
+  const hourlyRates = HOUR_LABELS.map(h=>Math.max(0, parseFloat(document.getElementById('hr'+h).value)||0));
+  return {K, c, Cq, pLoad, pUnload, pBoth, loadDist, unloadDist, hourlyRates};
+}
+
+function refreshDerivedDisplays(){
+  document.getElementById('derivedYard').textContent = 'docks + yard = site capacity of '+CFG.K+' trucks';
+  document.getElementById('derivedMix').textContent = 'normalized: '+fmt(CFG.pLoad,2)+' / '+fmt(CFG.pUnload,2)+' / '+fmt(CFG.pBoth,2);
+  const lm = meanVarOfDist(CFG.loadDist), um = meanVarOfDist(CFG.unloadDist);
+  document.getElementById('derivedLoad').textContent = 'mean '+fmt(lm.mean,1)+' min';
+  document.getElementById('derivedUnload').textContent = 'mean '+fmt(um.mean,1)+' min';
+  els.modelTag.textContent = 'docks c='+CFG.c+' · yard(wait)='+CFG.Cq+' · site='+CFG.K;
+  const totalDaily = CFG.hourlyRates.reduce((a,b)=>a+b,0);
+  document.getElementById('cfgSummary').textContent = fmt(totalDaily,1)+' trucks/day expected';
+}
+
+function computeAnalyticalHourly(){
+  const lm = meanVarOfDist(CFG.loadDist), um = meanVarOfDist(CFG.unloadDist);
+  const meanBoth = lm.mean+um.mean, varBoth = lm.variance+um.variance;
+  const meanS = CFG.pLoad*lm.mean + CFG.pUnload*um.mean + CFG.pBoth*meanBoth;
+  const varWithin = CFG.pLoad*lm.variance + CFG.pUnload*um.variance + CFG.pBoth*varBoth;
+  const varBetween = CFG.pLoad*Math.pow(lm.mean-meanS,2) + CFG.pUnload*Math.pow(um.mean-meanS,2) + CFG.pBoth*Math.pow(meanBoth-meanS,2);
+  const varS = varWithin+varBetween;
+  ANMU = 1/meanS;
+  const cs2 = varS/(meanS*meanS);
+  AN_HOURLY = CFG.hourlyRates.map(rate=> analytical(rate/60, ANMU, CFG.c, CFG.Cq));
+  return {meanS, varS, cs2};
+}
+
+function applyConfig(showNote){
+  CFG = readConfig();
+  const distInfo = computeAnalyticalHourly();
+  refreshDerivedDisplays();
+  renderAnalyticalTab(distInfo);
+  resetAnimatedSim();
+  clearBatchResults();
+  clearExperimentResults();
+  if(showNote){
+    els.resetNote.classList.add('show');
+    clearTimeout(window.__rnTimer);
+    window.__rnTimer = setTimeout(()=>els.resetNote.classList.remove('show'), 3200);
+  }
+}
+
+['inYardCap','inDocks','inPLoad','inPUnload','inPBoth','loadMin','loadMode','loadMax','loadAlpha','loadBeta',
+ 'unloadMin','unloadMode','unloadMax','unloadAlpha','unloadBeta'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', ()=>applyConfig(true));
+});
+HOUR_LABELS.forEach(h=> document.getElementById('hr'+h).addEventListener('change', ()=>applyConfig(true)));
+
+document.getElementById('btnExample').addEventListener('click', ()=>{
+  els.inYardCap.value=9; els.inDocks.value=3;
+  els.inPLoad.value=0.3; els.inPUnload.value=0.3; els.inPBoth.value=0.4;
+  els.loadType.value='triangular'; els.loadMin.value=20; els.loadMode.value=35; els.loadMax.value=60; els.loadAlpha.value=2; els.loadBeta.value=3;
+  els.unloadType.value='triangular'; els.unloadMin.value=15; els.unloadMode.value=30; els.unloadMax.value=50; els.unloadAlpha.value=2; els.unloadBeta.value=3;
+  toggleDistFields('load'); toggleDistFields('unload');
+  HOUR_LABELS.forEach(h=> document.getElementById('hr'+h).value = DEFAULT_HOURLY[h]);
+  applyConfig(true);
+});
+
+/* ================= tabs ================= */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    if(btn.dataset.tab==='animated'){ renderQueueVisual(null); }
+  });
+});
+
+/* ================= TAB 1 ================= */
+function renderAnalyticalTab(distInfo){
+  let rows = '<tr><th>hour</th><th>&lambda; /hr</th><th>&rho;</th><th>P(fail)</th><th>L</th><th>Lq</th><th>W min</th><th>Wq min</th></tr>';
+  let maxRho=-1, maxIdx=0;
+  AN_HOURLY.forEach((a,h)=>{
+    if(a.rho>maxRho){ maxRho=a.rho; maxIdx=h; }
+  });
+  AN_HOURLY.forEach((a,h)=>{
+    const cls = h===maxIdx ? ' class="peak"' : '';
+    rows += `<tr${cls}><td>${h}–${h+1}${h===maxIdx?' ★':''}</td><td>${fmt(CFG.hourlyRates[h],2)}</td><td>${fmt(a.rho,3)}</td><td>${fmt(a.Pblock,4)}</td><td>${fmt(a.L,3)}</td><td>${fmt(a.Lq,3)}</td><td>${fmt(a.W,2)}</td><td>${fmt(a.Wq,2)}</td></tr>`;
+  });
+  document.getElementById('hourTable').innerHTML = rows;
+
+  const labels = HOUR_LABELS.map(String);
+  groupedBarChart(document.getElementById('arrivalChart'), labels, [CFG.hourlyRates], ['#33ABA0'], {height:170});
+  groupedBarChart(document.getElementById('utilBlockChart'), labels, [AN_HOURLY.map(a=>a.rho), AN_HOURLY.map(a=>a.Pblock)], ['#33ABA0','#E0574A'], {height:170, yMax:Math.max(1, ...AN_HOURLY.map(a=>Math.max(a.rho,a.Pblock)))*1.15});
+
+  const avgRho = AN_HOURLY.reduce((s,a)=>s+a.rho,0)/24;
+  const avgPblock = AN_HOURLY.reduce((s,a)=>s+a.Pblock,0)/24;
+  const avgL = AN_HOURLY.reduce((s,a)=>s+a.L,0)/24;
+  const avgLq = AN_HOURLY.reduce((s,a)=>s+a.Lq,0)/24;
+  const dailyArrivals = CFG.hourlyRates.reduce((a,b)=>a+b,0);
+  const dailyDiverted = CFG.hourlyRates.reduce((s,r,h)=>s+r*AN_HOURLY[h].Pblock,0);
+  const dailyServed = dailyArrivals-dailyDiverted;
+
+  document.getElementById('dailyStats').innerHTML = [
+    ['avg. utilization &rho; (24h mean)', fmt(avgRho,3), ''],
+    ['peak hour utilization', fmt(maxRho,3), 'hour '+maxIdx+'–'+(maxIdx+1)],
+    ['avg. failure (diversion) rate', pct(avgPblock), ''],
+    ['avg. trucks on site (docks+yard) (L)', fmt(avgL,2), 'units'],
+    ['avg. trucks waiting in yard (Lq)', fmt(avgLq,2), 'units'],
+    ['expected arrivals / day', fmt(dailyArrivals,1), 'trucks'],
+    ['expected served / day', fmt(dailyServed,1), 'trucks'],
+    ['expected diverted / day', fmt(dailyDiverted,1), 'trucks'],
+  ].map(([k,v,u])=>`<div class="stat-card"><div class="k">${k}</div><div class="v">${v}<span class="u">${u}</span></div></div>`).join('');
+
+  const cs2Note = distInfo.cs2>1.05
+    ? 'more variable than exponential — actual queueing (see simulation) will typically run somewhat worse than this baseline.'
+    : (distInfo.cs2<0.95 ? 'more regular than exponential — actual queueing (see simulation) will typically run somewhat better than this baseline.' : 'close to exponential — this baseline should track the simulation fairly closely.');
+  document.getElementById('scvNote').innerHTML = `Combined service time (mixing load-only, unload-only, and unload-then-load trucks): mean = <b>${fmt(distInfo.meanS,2)}</b> min, squared coefficient of variation C<sub>s</sub>&sup2; = <b>${fmt(distInfo.cs2,3)}</b>. This approximation assumes exponential service (C<sub>s</sub>&sup2;=1); your configured mix is ${cs2Note}`;
+
+  document.getElementById('formulaBox').innerHTML =
+`per truck type, mean/variance of service time from its distribution (triangular, PERT, or beta)
+combined mean  E[S] = pLoad&middot;E[load] + pUnload&middot;E[unload] + pBoth&middot;(E[load]+E[unload])
+                    = <b>${fmt(distInfo.meanS,3)}</b> min
+&mu; (equivalent exponential rate) = 1/E[S] = <b>${fmt(ANMU,4)}</b> /min
+
+for each hour h: treat as stationary M/M/c/K with
+  &lambda;<sub>h</sub> = hourly rate(h)/60,  c = ${CFG.c} docks,  yard (waiting) capacity = ${CFG.Cq},
+  K = c + yard capacity = <b>${CFG.K}</b> total trucks on site
+  solved with the same recursive M/M/c/K formulas as the single-workstation lab
+  (a truck is only turned away once all c docks are busy and the ${CFG.Cq}-truck yard is full)
+
+daily figures are simple 24-hour averages / sums of the hourly results.
+this ignores actual service-time variance, truck-type correlation, and carryover
+of queue state across hour boundaries — the simulation tabs model all of that exactly.`;
+}
+
+/* ================= TAB 2: animated ================= */
+let sim=null, simSeed=20260914, playing=false, lastTs=null, simClockTarget=0;
+let speed=parseFloat(document.getElementById('speedRange').value);
+let logEntries=[]; let visC=1, visQ=5; let simDaysLimit=1;
+
+const vizEls = {
+  serversRow: document.getElementById('serversRow'),
+  queueCol: document.getElementById('queueCol'),
+  blockedFlash: document.getElementById('blockedFlash'),
+  arrowIn: document.getElementById('arrowIn'),
+  arrowOut: document.getElementById('arrowOut'),
+  clockVal: document.getElementById('simClockVal'),
+  nVal: document.getElementById('simNVal'),
+  kVal: document.getElementById('simKVal'),
+  servedVal: document.getElementById('simServedVal'),
+  blockedVal: document.getElementById('simBlockedVal'),
+  eventLog: document.getElementById('eventLog'),
+  visNote: document.getElementById('visNote'),
+  simDay: document.getElementById('simDay'),
+  simHour: document.getElementById('simHour'),
+};
+
+function truckClass(type){ return type===0?'truck-load':(type===1?'truck-unload':'truck-both'); }
+
+function buildVisualScaffold(){
+  visC=Math.min(CFG.c, VIS_MAX_SERVERS); visQ=Math.min(CFG.Cq, VIS_MAX_QUEUE);
+  vizEls.serversRow.innerHTML='';
+  for(let i=0;i<visC;i++){
+    const d=document.createElement('div'); d.className='server-node'; d.dataset.idx=i;
+    const u=document.createElement('div'); u.className='truck-unit'; d.appendChild(u);
+    const lbl=document.createElement('div'); lbl.className='idx'; lbl.textContent='door '+(i+1); d.appendChild(lbl);
+    vizEls.serversRow.appendChild(d);
+  }
+  vizEls.queueCol.innerHTML='';
+  for(let i=0;i<visQ;i++){ const d=document.createElement('div'); d.className='q-slot'; vizEls.queueCol.appendChild(d); }
+  const notes=[];
+  if(CFG.c>VIS_MAX_SERVERS) notes.push(`showing ${VIS_MAX_SERVERS} of ${CFG.c} dock doors`);
+  if(CFG.Cq>VIS_MAX_QUEUE) notes.push(`showing ${VIS_MAX_QUEUE} of ${CFG.Cq} waiting slots`);
+  vizEls.visNote.textContent = notes.join(' · ');
+  vizEls.kVal.textContent = String(CFG.K);
+}
+
+function resetAnimatedSim(){
+  playing=false; lastTs=null; simClockTarget=0;
+  document.getElementById('btnPlay').disabled=false;
+  document.getElementById('btnPause').disabled=true;
+  simSeed=(simSeed*9301+49297)%233280+1;
+  simDaysLimit = clamp(Math.round(parseFloat(document.getElementById('inDaysAnim').value)||1),1,10);
+  sim = new YardSim(CFG, simSeed);
+  logEntries=[]; vizEls.eventLog.innerHTML='';
+  buildVisualScaffold();
+  renderQueueVisual(null);
+  updateSimStats();
+}
+document.getElementById('inDaysAnim').addEventListener('change', resetAnimatedSim);
+
+function pushLog(text, cls){
+  logEntries.unshift({text,cls});
+  if(logEntries.length>60) logEntries.length=60;
+  vizEls.eventLog.innerHTML = logEntries.map(e=>`<div class="ev-${e.cls}">${e.text}</div>`).join('');
+}
+
+function renderQueueVisual(evt){
+  const slots=vizEls.queueCol.querySelectorAll('.q-slot');
+  const qlen = sim? sim.queue.length:0;
+  slots.forEach((s,i)=>{
+    const shouldFill=i<qlen;
+    const wasFilled=s.classList.contains('filled');
+    if(shouldFill && !wasFilled){
+      s.classList.add('filled','pop'); setTimeout(()=>s.classList.remove('pop'),220);
+      const t=sim.queue[i].type;
+      s.style.background='';
+      s.className='q-slot filled '+truckClass(t);
+      s.classList.add('pop');
+    } else if(!shouldFill && wasFilled){
+      s.className='q-slot';
+    } else if(shouldFill && wasFilled){
+      const t=sim.queue[i].type;
+      const wantClass='q-slot filled '+truckClass(t);
+      if(s.className.indexOf(truckClass(t))<0) s.className=wantClass;
+    }
+  });
+  const nodes=vizEls.serversRow.querySelectorAll('.server-node');
+  nodes.forEach((node,i)=>{
+    const cust = sim && sim.serverCustomer[i];
+    const unit = node.querySelector('.truck-unit');
+    node.classList.toggle('busy', !!cust);
+    unit.classList.toggle('on', !!cust);
+    unit.className = 'truck-unit'+(cust?(' on '+truckClass(cust.type)):'');
+  });
+  if(evt){
+    if(evt.type==='blocked'){
+      vizEls.blockedFlash.classList.add('show');
+      clearTimeout(window.__bfTimer);
+      window.__bfTimer=setTimeout(()=>vizEls.blockedFlash.classList.remove('show'),700);
+      vizEls.arrowIn.classList.remove('pulse'); void vizEls.arrowIn.offsetWidth; vizEls.arrowIn.classList.add('pulse');
+    } else if(evt.type==='admit-serve'||evt.type==='admit-queue'){
+      vizEls.arrowIn.classList.remove('pulse'); void vizEls.arrowIn.offsetWidth; vizEls.arrowIn.classList.add('pulse');
+    } else if(evt.type==='depart'){
+      vizEls.arrowOut.classList.remove('pulse'); void vizEls.arrowOut.offsetWidth; vizEls.arrowOut.classList.add('pulse');
+      if(evt.serverIndex<visC){ const node=vizEls.serversRow.children[evt.serverIndex]; if(node){ node.classList.add('flash-depart'); setTimeout(()=>node.classList.remove('flash-depart'),250); } }
+    }
+  }
+}
+
+const TYPE_NAMES=['loading only','unloading only','unload then load'];
+function handleEventVisual(evt){
+  renderQueueVisual(evt);
+  const t=fmt(evt.time,1);
+  if(evt.type==='admit-serve') pushLog(`t=${t}  truck (${TYPE_NAMES[evt.truckType]}) arrives, enters door ${evt.serverIndex+1} (n=${evt.n})`, 'arrive');
+  else if(evt.type==='admit-queue') pushLog(`t=${t}  truck (${TYPE_NAMES[evt.truckType]}) arrives, waits in yard (n=${evt.n})`, 'arrive');
+  else if(evt.type==='blocked') pushLog(`t=${t}  truck arrives — docks busy & yard full, diverted (failure)`, 'block');
+  else if(evt.type==='depart') pushLog(`t=${t}  truck departs door ${evt.serverIndex+1}, W=${fmt(evt.W,1)} min (n=${evt.n})`, 'depart');
+}
+
+function updateSimStats(){
+  const day = Math.floor(sim.clock/1440)+1;
+  const hour = Math.floor((sim.clock%1440)/60);
+  vizEls.simDay.textContent=String(day);
+  vizEls.simHour.textContent=String(hour);
+  vizEls.clockVal.textContent=fmt(sim.clock,1);
+  vizEls.nVal.textContent=String(sim.n);
+  vizEls.servedVal.textContent=String(sim.served);
+  vizEls.blockedVal.textContent=String(sim.blocked);
+
+  sparkline(document.getElementById('hourSpark'), CFG.hourlyRates, hour, {height:32});
+
+  const st=sim.getStats();
+
+  document.getElementById('simThroughputStats').innerHTML = [
+    ['trucks served', String(st.served), ''],
+    ['trucks diverted (failures)', String(st.blocked), ''],
+    ['failure rate', pct(st.Pblock), ''],
+    ['throughput', fmt(st.served/(sim.clock/60||1),2), 'trucks/hr'],
+    ['avg. time in system (W)', fmt(st.W,1), 'min'],
+    ['avg. wait for a door (Wq)', fmt(st.Wq,1), 'min'],
+  ].map(([k,v,u])=>`<div class="stat-card${k.indexOf('fail')>=0?' fail':''}"><div class="k">${k}</div><div class="v">${v}<span class="u">${u}</span></div></div>`).join('');
+
+  document.getElementById('simUtilStats').innerHTML = [
+    ['avg. dock utilization &rho;', pct(st.util), ''],
+    ['peak docks busy at once', st.maxBusy+' of '+CFG.c, pct(st.maxDockUtil)],
+    ['P(all docks busy)', pct(st.PallBusy), ''],
+    ['avg. trucks waiting in yard', fmt(st.Lq,2)+' of '+CFG.Cq, pct(CFG.Cq>0?st.Lq/CFG.Cq:0)],
+    ['peak trucks waiting in yard', st.maxQueueLen+' of '+CFG.Cq, pct(st.maxYardWaitUtil)],
+    ['avg. trucks on site (docks+yard)', fmt(st.L,2)+' of '+CFG.K, pct(st.L/CFG.K)],
+  ].map(([k,v,u])=>`<div class="stat-card warn"><div class="k">${k}</div><div class="v">${v}</div><div class="stat-sub">${u}</div></div>`).join('');
+
+  let typeRows='<tr><th>truck type</th><th>served</th><th>avg W min</th><th>avg Wq min</th><th>avg service min</th></tr>';
+  st.byType.forEach((bt,i)=>{ typeRows += `<tr><td>${TYPE_NAMES[i]}</td><td>${bt.served}</td><td>${fmt(bt.avgW,1)}</td><td>${fmt(bt.avgWq,1)}</td><td>${fmt(bt.avgService,1)}</td></tr>`; });
+  typeRows += `<tr><td>observed avg loading time</td><td colspan="3"></td><td>${fmt(st.avgLoadObs,1)}</td></tr>`;
+  typeRows += `<tr><td>observed avg unloading time</td><td colspan="3"></td><td>${fmt(st.avgUnloadObs,1)}</td></tr>`;
+  document.getElementById('simTypeTable').innerHTML = typeRows;
+
+  const labels = st.Pn.map((_,i)=>String(i));
+  groupedBarChart(document.getElementById('simPnChart'), labels, [st.Pn], ['#E3A038'], {height:150});
+
+  const anAvgN = AN_HOURLY.map(a=>a.L);
+  groupedBarChart(document.getElementById('simHourChart'), HOUR_LABELS.map(String), [anAvgN, st.hourAvgN], ['#33ABA0','#E3A038'], {height:170});
+}
+
+function frame(ts){
+  if(!playing) return;
+  if(lastTs===null) lastTs=ts;
+  const dt=(ts-lastTs)/1000; lastTs=ts;
+  simClockTarget += dt*speed;
+  const hardLimit = simDaysLimit*1440;
+  if(simClockTarget>hardLimit) simClockTarget=hardLimit;
+  let iter=0;
+  while(sim.peekNextEventTime()<=simClockTarget && iter<400){
+    const evt=sim.step();
+    if(!evt) break;
+    handleEventVisual(evt);
+    iter++;
+  }
+  updateSimStats();
+  if(sim.clock>=hardLimit && sim.peekNextEventTime()>hardLimit){
+    playing=false;
+    document.getElementById('btnPlay').disabled=true;
+    document.getElementById('btnPause').disabled=true;
+    return;
+  }
+  requestAnimationFrame(frame);
+}
+
+document.getElementById('btnPlay').addEventListener('click', ()=>{
+  if(!sim) resetAnimatedSim();
+  playing=true; lastTs=null;
+  document.getElementById('btnPlay').disabled=true;
+  document.getElementById('btnPause').disabled=false;
+  requestAnimationFrame(frame);
+});
+document.getElementById('btnPause').addEventListener('click', ()=>{
+  playing=false;
+  document.getElementById('btnPlay').disabled=false;
+  document.getElementById('btnPause').disabled=true;
+});
+document.getElementById('btnResetSim').addEventListener('click', resetAnimatedSim);
+document.getElementById('speedRange').addEventListener('input', e=>{ speed=parseFloat(e.target.value); document.getElementById('speedVal').textContent=speed.toFixed(0); });
+document.getElementById('speedVal').textContent=speed.toFixed(0);
+
+/* ================= TAB 3: batch ================= */
+let batchSeed=555;
+function clearBatchResults(){
+  document.getElementById('batchEmpty').style.display='block';
+  document.getElementById('batchResults').style.display='none';
+  document.getElementById('progressWrap').classList.remove('show');
+  document.getElementById('batchRunInfo').textContent='';
+}
+async function runBatch(){
+  const R = clamp(Math.round(parseFloat(document.getElementById('inReplications').value)||60),1,2000);
+  const D = clamp(Math.round(parseFloat(document.getElementById('inDaysBatch').value)||7),1,120);
+  const T = D*1440;
+  const btn=document.getElementById('btnRunBatch');
+  btn.disabled=true;
+  document.getElementById('progressWrap').classList.add('show');
+  document.getElementById('progressBar').style.width='0%';
+  document.getElementById('batchRunInfo').textContent=`running ${R} replications of ${D} day(s) each…`;
+
+  const runCfg = CFG;
+  const Ls=[],Lqs=[],Ws=[],Wqs=[],Pbs=[],Utils=[],BusyS=[],PallBs=[],MaxQueueWait=[],MaxDock=[];
+  const PnSum=new Array(runCfg.K+1).fill(0);
+  const hourAvgNSum=new Array(24).fill(0), hourPblockSum=new Array(24).fill(0);
+  const typeServed=[0,0,0], typeSumW=[0,0,0], typeSumWq=[0,0,0], typeSumService=[0,0,0];
+  const cumLavg=[]; let runningLsum=0;
+  let globalMaxQueue=0, globalMaxDock=0;
+
+  const chunk=Math.max(1, Math.round(R/40));
+  for(let r=0;r<R;r++){
+    batchSeed=(batchSeed*9301+49297)%233280+1;
+    const s = new YardSim(runCfg, batchSeed*1000+r+1);
+    s.runUntil(T);
+    const st = s.getStats();
+    Ls.push(st.L); Lqs.push(st.Lq); Ws.push(st.W); Wqs.push(st.Wq); Pbs.push(st.Pblock);
+    Utils.push(st.util); BusyS.push(st.busyServers); PallBs.push(st.PallBusy);
+    MaxQueueWait.push(st.maxYardWaitUtil); MaxDock.push(st.maxDockUtil);
+    if(st.maxQueueLen>globalMaxQueue) globalMaxQueue=st.maxQueueLen;
+    if(st.maxBusy>globalMaxDock) globalMaxDock=st.maxBusy;
+    for(let i=0;i<PnSum.length;i++) PnSum[i]+=st.Pn[i];
+    for(let h=0;h<24;h++){ hourAvgNSum[h]+=st.hourAvgN[h]; hourPblockSum[h]+=st.hourPblock[h]; }
+    st.byType.forEach((bt,i)=>{ typeServed[i]+=bt.served; typeSumW[i]+=bt.avgW*bt.served; typeSumWq[i]+=bt.avgWq*bt.served; typeSumService[i]+=bt.avgService*bt.served; });
+    runningLsum+=st.L; cumLavg.push(runningLsum/(r+1));
+    if(r%chunk===0){ document.getElementById('progressBar').style.width=(100*(r+1)/R).toFixed(0)+'%'; await new Promise(res=>setTimeout(res,0)); }
+  }
+  document.getElementById('progressBar').style.width='100%';
+
+  function meanStd(arr){ const m=arr.reduce((a,b)=>a+b,0)/arr.length; const v=arr.reduce((a,b)=>a+(b-m)*(b-m),0)/Math.max(1,arr.length-1); return {mean:m, std:Math.sqrt(v)}; }
+  const S = {L:meanStd(Ls), Lq:meanStd(Lqs), W:meanStd(Ws), Wq:meanStd(Wqs), Pblock:meanStd(Pbs), util:meanStd(Utils), busyServers:meanStd(BusyS), PallBusy:meanStd(PallBs), maxYardWaitUtil:meanStd(MaxQueueWait), maxDockUtil:meanStd(MaxDock)};
+  const dailyArrivals = runCfg.hourlyRates.reduce((a,b)=>a+b,0);
+  const AN_daily = { L: AN_HOURLY.reduce((s,a)=>s+a.L,0)/24, Lq: AN_HOURLY.reduce((s,a)=>s+a.Lq,0)/24,
+    W: AN_HOURLY.reduce((s,a)=>s+a.W,0)/24, Wq: AN_HOURLY.reduce((s,a)=>s+a.Wq,0)/24,
+    Pblock: AN_HOURLY.reduce((s,a)=>s+a.Pblock,0)/24, rho: AN_HOURLY.reduce((s,a)=>s+a.rho,0)/24,
+    busyServers: AN_HOURLY.reduce((s,a)=>s+a.busyServers,0)/24, PallBusy: AN_HOURLY.reduce((s,a)=>s+a.PallBusy,0)/24 };
+  const z=1.96;
+  function row(label,key,anVal,dec){ const s=S[key]; const ci=z*s.std/Math.sqrt(R); return `<tr><td>${label}</td><td class="hero">${fmt(anVal,dec)}</td><td class="hero">${fmt(s.mean,dec)}</td><td>&plusmn; ${fmt(ci,dec)}</td><td>${fmt(s.std,dec)}</td></tr>`; }
+  let tbl='<tr><th>metric</th><th>analytical (24h avg, approx.)</th><th>simulated mean</th><th>95% CI</th><th>std dev</th></tr>';
+  tbl += row('L — avg. trucks on site (docks+yard)','L',AN_daily.L,3);
+  tbl += row('Lq — avg. trucks waiting in yard','Lq',AN_daily.Lq,3);
+  tbl += row('W — avg. time in system (min)','W',AN_daily.W,2);
+  tbl += row('Wq — avg. wait for door (min)','Wq',AN_daily.Wq,2);
+  tbl += row('failure (diversion) rate','Pblock',AN_daily.Pblock,4);
+  tbl += row('&rho; — dock utilization','util',AN_daily.rho,4);
+  tbl += row('avg. busy docks (of '+runCfg.c+')','busyServers',AN_daily.busyServers,3);
+  tbl += row('P(all '+runCfg.c+' docks busy)','PallBusy',AN_daily.PallBusy,4);
+  tbl += `<tr><td>peak trucks waiting in yard (avg of per-run max)</td><td class="hero">—</td><td class="hero">${fmt(S.maxYardWaitUtil.mean*runCfg.Cq,1)} of ${runCfg.Cq} (${pct(S.maxYardWaitUtil.mean)})</td><td>&plusmn; ${fmt(z*S.maxYardWaitUtil.std/Math.sqrt(R)*runCfg.Cq,1)}</td><td>${fmt(S.maxYardWaitUtil.std*runCfg.Cq,2)}</td></tr>`;
+  tbl += `<tr><td>peak trucks waiting in yard (worst observed run)</td><td class="hero">—</td><td class="hero">${globalMaxQueue} of ${runCfg.Cq} (${pct(runCfg.Cq>0?globalMaxQueue/runCfg.Cq:0)})</td><td colspan="2">across all ${R} replications</td></tr>`;
+  tbl += `<tr><td>peak docks busy (avg of per-run max)</td><td class="hero">—</td><td class="hero">${fmt(S.maxDockUtil.mean*runCfg.c,1)} of ${runCfg.c} (${pct(S.maxDockUtil.mean)})</td><td>&plusmn; ${fmt(z*S.maxDockUtil.std/Math.sqrt(R)*runCfg.c,1)}</td><td>${fmt(S.maxDockUtil.std*runCfg.c,2)}</td></tr>`;
+  tbl += `<tr><td>peak docks busy (worst observed run)</td><td class="hero">—</td><td class="hero">${globalMaxDock} of ${runCfg.c} (${pct(globalMaxDock/runCfg.c)})</td><td colspan="2">across all ${R} replications</td></tr>`;
+  document.getElementById('batchTable').innerHTML=tbl;
+
+  const PnAvg=PnSum.map(x=>x/R);
+  const AN_daily_P = new Array(runCfg.K+1).fill(0);
+  AN_HOURLY.forEach(a=>{ a.P.forEach((p,i)=>{ AN_daily_P[i]+=p/24; }); });
+  groupedBarChart(document.getElementById('batchPnChart'), PnAvg.map((_,i)=>String(i)), [AN_daily_P, PnAvg], ['#33ABA0','#E3A038'], {height:190});
+
+  const sampleIdx=[]; const step=Math.max(1,Math.floor(cumLavg.length/120));
+  for(let i=0;i<cumLavg.length;i+=step) sampleIdx.push(cumLavg[i]);
+  if(sampleIdx[sampleIdx.length-1]!==cumLavg[cumLavg.length-1]) sampleIdx.push(cumLavg[cumLavg.length-1]);
+  lineChart(document.getElementById('convChart'), sampleIdx, AN_daily.L, {height:190});
+
+  const hourAvgNAvg=hourAvgNSum.map(x=>x/R), hourPblockAvg=hourPblockSum.map(x=>x/R);
+  groupedBarChart(document.getElementById('batchHourOccChart'), HOUR_LABELS.map(String), [AN_HOURLY.map(a=>a.L), hourAvgNAvg], ['#33ABA0','#E3A038'], {height:170});
+  groupedBarChart(document.getElementById('batchHourFailChart'), HOUR_LABELS.map(String), [AN_HOURLY.map(a=>a.Pblock), hourPblockAvg], ['#33ABA0','#E0574A'], {height:170});
+
+  let typeRows='<tr><th>truck type</th><th>served (total)</th><th>avg W min</th><th>avg Wq min</th><th>avg service min</th></tr>';
+  TYPE_NAMES.forEach((name,i)=>{
+    const served=typeServed[i];
+    const avgW = served? typeSumW[i]/served:0, avgWq= served? typeSumWq[i]/served:0, avgService= served? typeSumService[i]/served:0;
+    typeRows += `<tr><td>${name}</td><td>${served}</td><td>${fmt(avgW,1)}</td><td>${fmt(avgWq,1)}</td><td>${fmt(avgService,1)}</td></tr>`;
+  });
+  document.getElementById('batchTypeTable').innerHTML=typeRows;
+
+  document.getElementById('batchEmpty').style.display='none';
+  document.getElementById('batchResults').style.display='block';
+  document.getElementById('batchRunInfo').textContent=`${R} replications × ${D} day(s), done — ${fmt(dailyArrivals,1)} expected arrivals/day`;
+  document.getElementById('progressWrap').classList.remove('show');
+  btn.disabled=false;
+}
+document.getElementById('btnRunBatch').addEventListener('click', runBatch);
+
+/* ================= TAB 4: design experiments ================= */
+let expSeed = 909090;
+const EXP_MAX_COMBOS = 60;
+function clearExperimentResults(){
+  const empty=document.getElementById('expEmpty');
+  const res=document.getElementById('expResults');
+  if(empty) empty.style.display='block';
+  if(res) res.style.display='none';
+  const pw=document.getElementById('expProgressWrap'); if(pw) pw.classList.remove('show');
+  const info=document.getElementById('expDesignInfo'); if(info) info.textContent='';
+}
+
+function buildRange(min, max, step){
+  min = Math.max(0, Math.round(min));
+  max = Math.max(min, Math.round(max));
+  step = Math.max(1, Math.round(step));
+  const vals=[];
+  for(let v=min; v<=max; v+=step) vals.push(v);
+  if(vals[vals.length-1]!==max) vals.push(max);
+  return vals;
+}
+
+async function runExperiment(){
+  const yardMinIn = parseFloat(document.getElementById('inExpYardMin').value)||0;
+  const yardMaxIn = parseFloat(document.getElementById('inExpYardMax').value)||yardMinIn;
+  let yardStepIn = parseFloat(document.getElementById('inExpYardStep').value)||1;
+  const docksMinIn = Math.max(1, parseFloat(document.getElementById('inExpDocksMin').value)||1);
+  const docksMaxIn = Math.max(docksMinIn, parseFloat(document.getElementById('inExpDocksMax').value)||docksMinIn);
+  let docksStepIn = parseFloat(document.getElementById('inExpDocksStep').value)||1;
+  const R = clamp(Math.round(parseFloat(document.getElementById('inExpReps').value)||15), 1, 200);
+  const D = clamp(Math.round(parseFloat(document.getElementById('inExpDays').value)||4), 1, 30);
+
+  let yardVals = buildRange(yardMinIn, yardMaxIn, yardStepIn);
+  let docksVals = buildRange(docksMinIn, docksMaxIn, docksStepIn);
+  let autoNote = '';
+  while(yardVals.length*docksVals.length > EXP_MAX_COMBOS && (yardVals.length>1 || docksVals.length>1)){
+    if(yardVals.length>=docksVals.length && yardVals.length>1){ yardStepIn*=1.6; yardVals=buildRange(yardMinIn,yardMaxIn,yardStepIn); }
+    else if(docksVals.length>1){ docksStepIn+=1; docksVals=buildRange(docksMinIn,docksMaxIn,docksStepIn); }
+    else break;
+    autoNote = ' (step widened automatically to keep the grid at or below '+EXP_MAX_COMBOS+' combinations)';
+  }
+  const combos = yardVals.length*docksVals.length;
+  const T = D*1440;
+
+  const btn = document.getElementById('btnRunExperiment');
+  btn.disabled=true;
+  document.getElementById('expProgressWrap').classList.add('show');
+  document.getElementById('expProgressBar').style.width='0%';
+  document.getElementById('expDesignInfo').textContent = `${combos} combinations (${yardVals.length} yard sizes &times; ${docksVals.length} dock counts) &times; ${R} replications &times; ${D} day(s)${autoNote} — running…`.replace(/&times;/g,'\u00d7');
+
+  const runCfg = CFG;
+  const results=[]; // {yard, docks, K, fail:{mean,std,min,max,vals}, wq:{...}, util:{...}}
+  let done=0;
+  for(let di=0; di<docksVals.length; di++){
+    for(let yi=0; yi<yardVals.length; yi++){
+      const docks=docksVals[di], yard=yardVals[yi];
+      const cfg = Object.assign({}, runCfg, {c:docks, Cq:yard, K:docks+yard});
+      const failArr=[], wqArr=[], utilArr=[];
+      for(let r=0;r<R;r++){
+        expSeed=(expSeed*9301+49297)%233280+1;
+        const s = new YardSim(cfg, expSeed*1000+r+1);
+        s.runUntil(T);
+        const st = s.getStats();
+        failArr.push(st.Pblock); wqArr.push(st.Wq); utilArr.push(st.util);
+      }
+      function summarize(arr){
+        const m=arr.reduce((a,b)=>a+b,0)/arr.length;
+        const v=arr.reduce((a,b)=>a+(b-m)*(b-m),0)/Math.max(1,arr.length-1);
+        return {mean:m, std:Math.sqrt(v), min:Math.min(...arr), max:Math.max(...arr)};
+      }
+      results.push({yard, docks, K:docks+yard, fail:summarize(failArr), wq:summarize(wqArr), util:summarize(utilArr)});
+      done++;
+      document.getElementById('expProgressBar').style.width=(100*done/combos).toFixed(0)+'%';
+      await new Promise(res=>setTimeout(res,0));
+    }
+  }
+
+  const failMatrix = docksVals.map(d=> yardVals.map(y=> results.find(r=>r.docks===d&&r.yard===y).fail.mean));
+  const wqMatrix = docksVals.map(d=> yardVals.map(y=> results.find(r=>r.docks===d&&r.yard===y).wq.mean));
+  const utilMatrix = docksVals.map(d=> yardVals.map(y=> results.find(r=>r.docks===d&&r.yard===y).util.mean));
+
+  heatmapChart(document.getElementById('expHeatFail'), yardVals.map(String), docksVals.map(v=>'c='+v), failMatrix, {fmt:v=>(v*100).toFixed(1)+'%'});
+  heatmapChart(document.getElementById('expHeatWq'), yardVals.map(String), docksVals.map(v=>'c='+v), wqMatrix, {fmt:v=>v.toFixed(1)});
+  heatmapChart(document.getElementById('expHeatUtil'), yardVals.map(String), docksVals.map(v=>'c='+v), utilMatrix, {fmt:v=>(v*100).toFixed(0)+'%'});
+
+  const failSeries = docksVals.map((d,i)=>({name:'c='+d, color:EXP_PALETTE[i%EXP_PALETTE.length], values: yardVals.map(y=> results.find(r=>r.docks===d&&r.yard===y).fail.mean)}));
+  const wqSeries = docksVals.map((d,i)=>({name:'c='+d, color:EXP_PALETTE[i%EXP_PALETTE.length], values: yardVals.map(y=> results.find(r=>r.docks===d&&r.yard===y).wq.mean)}));
+  const utilSeries = docksVals.map((d,i)=>({name:'c='+d, color:EXP_PALETTE[i%EXP_PALETTE.length], values: yardVals.map(y=> results.find(r=>r.docks===d&&r.yard===y).util.mean)}));
+  multiLineChart(document.getElementById('expLineFail'), yardVals.map(String), failSeries, {height:200});
+  multiLineChart(document.getElementById('expLineWq'), yardVals.map(String), wqSeries, {height:200});
+  multiLineChart(document.getElementById('expLineUtil'), yardVals.map(String), utilSeries, {height:200});
+  document.getElementById('expLegend').innerHTML = docksVals.map((d,i)=>`<span><i style="background:${EXP_PALETTE[i%EXP_PALETTE.length]}"></i>${d} dock${d>1?'s':''}</span>`).join('');
+
+  let rows = '<tr><th>yard</th><th>docks</th><th>K total</th><th>fail mean</th><th>fail std</th><th>Wq mean min</th><th>Wq std</th><th>&rho; mean</th><th>&rho; std</th></tr>';
+  results.forEach(r=>{
+    rows += `<tr><td>${r.yard}</td><td>${r.docks}</td><td>${r.K}</td><td>${pct(r.fail.mean)}</td><td>${pct(r.fail.std)}</td><td>${fmt(r.wq.mean,1)}</td><td>${fmt(r.wq.std,1)}</td><td>${pct(r.util.mean)}</td><td>${pct(r.util.std)}</td></tr>`;
+  });
+  document.getElementById('expTable').innerHTML = rows;
+
+  document.getElementById('expDesignInfo').textContent = `${combos} combinations (${yardVals.length} yard sizes \u00d7 ${docksVals.length} dock counts) \u00d7 ${R} replications \u00d7 ${D} day(s)${autoNote} — done`;
+  document.getElementById('expProgressWrap').classList.remove('show');
+  document.getElementById('expEmpty').style.display='none';
+  document.getElementById('expResults').style.display='block';
+  btn.disabled=false;
+}
+document.getElementById('btnRunExperiment').addEventListener('click', runExperiment);
+
+/* ================= init ================= */
+toggleDistFields('load'); toggleDistFields('unload');
+applyConfig(false);
+
+})();
+</script>
+</body>
+</html>
