@@ -8,4 +8,4 @@ Runs entirely in the browser — nothing to install. Just open the link above, s
 
 ## Contact
 
-For any questions about this interactive simulator, please contact **Prof. Benoit Montreuil** (benoit.montreuil@isye.gatech.edu) and **Yinzhu Quan** (yquan9@gatech.edu).
+For any questions about this interactive simulator, please contact **Prof. Benoit Montreuil** (benoit.montreuil@isye.gatech.edu).
